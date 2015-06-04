@@ -1,8 +1,20 @@
 package org.apache.cxf.transport.play
 
 import java.io.{ByteArrayInputStream, InputStream, OutputStream}
+import javax.inject.Inject
+import javax.xml.namespace.QName
+import java.util.logging.Logger
+import java.util.HashMap
 
+import org.apache.cxf.common.logging.LogUtils
 import org.apache.cxf.message.{MessageImpl, Message}
+import org.apache.cxf.jaxws.JaxWsServerFactoryBean
+import org.apache.ws.security.WSConstants
+import org.apache.ws.security.handler.WSHandlerConstants
+import org.apache.cxf.interceptor.LoggingInInterceptor
+import org.apache.cxf.interceptor.LoggingOutInterceptor
+import org.apache.cxf.ws.security.wss4j.WSS4JInInterceptor
+import org.apache.cxf.ws.security.wss4j.WSS4JOutInterceptor
 
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.Enumerator
@@ -11,8 +23,10 @@ import play.api.mvc._
 import scala.concurrent.Promise
 import scala.collection.JavaConverters._
 
+
 object CxfController extends Controller {
 
+  def LOG = LogUtils.getL7dLogger(CxfController.getClass);
   /**
    * Factory method for Spring.
    */
@@ -22,6 +36,8 @@ object CxfController extends Controller {
    * Apache CXF transport factory, set by Spring.
    */
   var transportFactory: PlayTransportFactory = null
+
+  var endpoints: java.util.List[PlayEndpoint] = null
 
   val maxRequestSize = 1024 * 1024
 
@@ -82,8 +98,38 @@ object CxfController extends Controller {
     }
   }
 
+  @Inject
   def setTransportFactory(factory: PlayTransportFactory) {
     this.transportFactory = factory
+  }
+
+  @Inject
+  def setEndpoints(endpoints: java.util.List[PlayEndpoint]) = {
+    this.endpoints = endpoints
+    var sf: JaxWsServerFactoryBean = new JaxWsServerFactoryBean()
+
+    for (endpoint: PlayEndpoint <- endpoints.asScala.toSet) {
+      sf.setServiceClass(endpoint.getImplementor.getClass)
+      sf.setAddress(endpoint.getAddress)
+      sf.setTransportId(endpoint.getTransportId)
+      var cxfEndpoint = sf.create.getEndpoint
+
+      if (endpoint.useWSSecurity) {
+        var inProps = new HashMap[String,Object]()
+        inProps.put(WSHandlerConstants.ACTION, WSHandlerConstants.USERNAME_TOKEN)
+        inProps.put(WSHandlerConstants.PASSWORD_TYPE, WSConstants.PW_TEXT)
+        inProps.put(WSHandlerConstants.PW_CALLBACK_REF, new ServerPasswordCallback())
+        inProps.put(WSHandlerConstants.ACTOR, WSConstants.URI_SOAP11_NEXT_ACTOR)
+        
+        var wssIn = new WSS4JInInterceptor(inProps)
+
+        // Do not let this go out of order.
+        cxfEndpoint.getInInterceptors().add(new WSSecurityNamespaceInInterceptor())
+        cxfEndpoint.getInInterceptors().add(wssIn)
+        cxfEndpoint.getInInterceptors().add(new LoggingInInterceptor())
+        cxfEndpoint.getOutInterceptors().add(new LoggingOutInterceptor())
+      }
+    }
   }
 
 }
