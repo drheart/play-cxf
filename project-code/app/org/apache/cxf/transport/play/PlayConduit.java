@@ -46,11 +46,10 @@ public class PlayConduit extends AbstractConduit {
         this.replyPromise = replyPromise;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void prepare(Message outMessage) throws IOException {
         outMessage.setContent(OutputStream.class, output);
-        replyPromise.complete(new Success(outMessage));
+        replyPromise.complete(new Success<Message>(outMessage));
     }
 
     @Override

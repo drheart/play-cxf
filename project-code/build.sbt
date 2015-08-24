@@ -1,12 +1,4 @@
-import play.core.PlayVersion
-
-val playVersionSuffix: String = {
-  val versions = PlayVersion.current.split('.')
-  require(versions.length >= 2)
-  s"${versions(0)}${versions(1)}"
-}
-
-name := s"play-cxf_play$playVersionSuffix"
+name := s"play-cxf"
 
 organization := "eu.imind.play"
 
@@ -16,7 +8,7 @@ organizationHomepage := Some(url("http://imind.eu/"))
 
 version := "1.1.1"
 
-scalaVersion := "2.11.1"
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.11.1"
 

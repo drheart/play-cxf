@@ -1,36 +1,31 @@
 package org.apache.cxf.transport.play;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.Map;
 import javax.xml.namespace.QName;
 
 import org.apache.cxf.binding.soap.interceptor.*;
-import org.apache.cxf.binding.soap.Soap11;
-import org.apache.cxf.binding.soap.Soap12;
 import org.apache.cxf.binding.soap.SoapMessage;
-import org.apache.cxf.binding.soap.model.SoapOperationInfo;
 import org.apache.cxf.common.logging.LogUtils;
-import org.apache.cxf.endpoint.Endpoint;
 import org.apache.cxf.headers.Header;
-import org.apache.cxf.helpers.CastUtils;
 import org.apache.cxf.interceptor.Fault;
-import org.apache.cxf.message.Exchange;
-import org.apache.cxf.message.Message;
 import org.apache.cxf.phase.Phase;
-import org.apache.cxf.service.model.BindingOperationInfo;
-import org.apache.cxf.service.model.OperationInfo;
- 
+
+/**
+ * This class is critical to supporting WS-Security extensions in a manner compatible with the official WSS4J library.
+ * There is some degree of ambiguity in the specification for WS-Security such that an implementation may use an alternative
+ * namespace name for the Security tag (other than "wsse"), such that the namespace still references the correct schema.
+ * WSS4J, however, has the expectation that it is "wsse". We accommodate for this with the following interceptor.
+ */
 public class WSSecurityNamespaceInInterceptor extends AbstractSoapInterceptor {
     private static final Logger LOG = LogUtils.getL7dLogger(WSSecurityNamespaceInInterceptor.class);
- 
+
     public WSSecurityNamespaceInInterceptor() {
         super(Phase.PRE_PROTOCOL);
         addAfter(ReadHeadersInterceptor.class.getName());
         addAfter(EndpointSelectionInterceptor.class.getName());
     }
- 
+
     public void handleMessage(SoapMessage message) throws Fault {
         List<Header> headers = message.getHeaders();
         LOG.info("Obtained headers.");
