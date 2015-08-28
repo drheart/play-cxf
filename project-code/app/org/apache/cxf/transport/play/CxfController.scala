@@ -84,7 +84,6 @@ object CxfController extends Controller {
                               output: OutputStream,
                               replyPromise: Promise[Message])
                              (implicit request: Request[RawBuffer]) {
-
     val dOpt = Option(transportFactory.getDestination(endpointAddress)).orElse(
         Option(transportFactory.getDestination(request.path)))
     dOpt match {
@@ -106,10 +105,10 @@ object CxfController extends Controller {
   @Inject
   def setEndpoints(endpoints: java.util.List[PlayEndpoint]) = {
     this.endpoints = endpoints
-    var sf: JaxWsServerFactoryBean = new JaxWsServerFactoryBean()
-
+    
     for (endpoint: PlayEndpoint <- endpoints.asScala.toSet) {
-      sf.setServiceClass(endpoint.getImplementor.getClass)
+      var sf: JaxWsServerFactoryBean = new JaxWsServerFactoryBean()
+      sf.setServiceClass(endpoint.getInterface)
       sf.setAddress(endpoint.getAddress)
       sf.setTransportId(endpoint.getTransportId)
       var cxfEndpoint = sf.create.getEndpoint
