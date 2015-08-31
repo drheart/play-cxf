@@ -1,6 +1,6 @@
 package org.apache.cxf.transport.play
 
-import java.io.{ByteArrayInputStream, InputStream, OutputStream}
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
 import javax.inject.Inject
 import javax.xml.namespace.QName
 import java.util.logging.Logger
@@ -42,15 +42,12 @@ object CxfController extends Controller {
   val maxRequestSize = 1024 * 1024
 
   def handle(path: String) = Action.async(parse.raw(maxRequestSize)) { implicit request =>
-    val delayedOutput = new DelayedOutputStream
+    val delayedOutput = new ByteArrayOutputStream
     val replyPromise: Promise[Message] = Promise.apply()
     dispatchMessage(extractMessage, delayedOutput, replyPromise)
 
-    val resultEnumerator = Enumerator.outputStream { os =>
-      delayedOutput.setTarget(os)
-    }
     replyPromise.future.map { outMessage =>
-      Ok.chunked(resultEnumerator >>> Enumerator.eof) withHeaders(
+      Ok(delayedOutput.toByteArray) withHeaders(
         Message.CONTENT_TYPE -> outMessage.get(Message.CONTENT_TYPE).asInstanceOf[String]
       )
     }
@@ -105,7 +102,7 @@ object CxfController extends Controller {
   @Inject
   def setEndpoints(endpoints: java.util.List[PlayEndpoint]) = {
     this.endpoints = endpoints
-    
+
     for (endpoint: PlayEndpoint <- endpoints.asScala.toSet) {
       var sf: JaxWsServerFactoryBean = new JaxWsServerFactoryBean()
       sf.setServiceClass(endpoint.getInterface)
